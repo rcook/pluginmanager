@@ -1,0 +1,18 @@
+sudo: false
+
+language: cpp
+
+addons:
+  apt:
+    sources:
+      - kubuntu-backports
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-4.9
+      - cmake
+
+install:
+  - export CXX="g++-4.9" CC="gcc-4.9"
+
+script: script/run-cmake Debug && script/run-make && script/run-unittest && script/run-app
+

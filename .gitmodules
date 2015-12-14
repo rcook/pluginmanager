@@ -1,0 +1,6 @@
+[submodule "third-party/catch"]
+	path = third-party/catch
+	url = https://github.com/rcook/Catch.git
+[submodule "third-party/cmakelib"]
+	path = third-party/cmakelib
+	url = https://github.com/rcook/cmakelib.git

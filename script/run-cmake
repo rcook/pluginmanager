@@ -1,0 +1,38 @@
+#!/bin/bash
+if [[ "$OSTYPE" =~ ^darwin ]]; then
+  READLINK=greadlink
+else
+  READLINK=readlink
+fi
+SCRIPTPATH=$($READLINK -f $0)
+SCRIPTDIR=$(dirname $SCRIPTPATH)
+REPODIR=$(dirname $SCRIPTDIR)
+CMAKEDIR=$REPODIR/cmake
+
+if [[ "$CMAKE" == "" ]]; then
+  CMAKE=cmake
+fi
+
+function run_cmake {
+  local build_type=$1
+  mkdir -p $CMAKEDIR/$build_type/ || exit 1
+  cd $CMAKEDIR/$build_type/ || exit 1
+  $CMAKE \
+    --no-warn-unused-cli \
+    -DCMAKE_BUILD_TYPE=$build_type \
+    -DCMAKE_INSTALL_PREFIX:PATH=$CMAKEDIR/$build_type/install \
+    -G "Unix Makefiles" $REPODIR/ || exit 1
+}
+
+if [[ "$1" == 'Debug' ]] || [[ "$1" == 'debug' ]]; then
+  build_type=Debug
+fi
+if [[ "$1" == 'Release' ]] || [[ "$1" == 'release' ]]; then
+  build_type=Release
+fi
+
+if [[ "$build_type" == '' ]]; then
+  build_type=Debug
+fi
+
+run_cmake $build_type

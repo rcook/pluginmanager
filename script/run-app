@@ -1,0 +1,23 @@
+#!/bin/bash
+if [[ "$OSTYPE" =~ ^darwin ]]; then
+  READLINK=greadlink
+else
+  READLINK=readlink
+fi
+SCRIPTPATH=$($READLINK -f $0)
+SCRIPTDIR=$(dirname $SCRIPTPATH)
+REPODIR=$(dirname $SCRIPTDIR)
+CMAKEDIR=$REPODIR/cmake
+
+if [[ "$1" == 'Debug' ]] || [[ "$1" == 'debug' ]]; then
+  build_type=Debug
+fi
+if [[ "$1" == 'Release' ]] || [[ "$1" == 'release' ]]; then
+  build_type=Release
+fi
+
+if [[ "$build_type" == '' ]]; then
+  build_type=Debug
+fi
+
+$CMAKEDIR/$build_type/install/bin/app
