@@ -16,6 +16,7 @@ target_include_directories(utillib-objs PRIVATE
 
 add_library(utillib-test-objs OBJECT
   ${CMAKE_CURRENT_BINARY_DIR}/config.h
+  ${SRC}/utillib/test/ScopedHandleTest.cpp
   ${SRC}/utillib/test/StringTest.cpp
   ${SRC}/utillib/test/TrieTest.cpp
 )
