@@ -92,15 +92,45 @@ static TestHandle openTestHandle(const string& name)
 
 TEST_CASE("ScopedHandle", "ScopedHandle")
 {
-    SECTION("basics")
+    using TestUniquePtr = unique_ptr<remove_pointer<RawHandle>::type, decltype(CloseRawHandle)*>;
+
+    SECTION("invalid")
+    {
+        TestHandle handle;
+
+        REQUIRE(!handle);
+
+        bool handleAsBool = handle;
+        REQUIRE(!handleAsBool);
+
+        REQUIRE_THROWS_AS(handle.get(), runtime_error);
+    }
+
+    SECTION("valid")
+    {
+        auto handle = openTestHandle("valid");
+
+        REQUIRE(handle);
+
+        bool handleAsBool = handle;
+        REQUIRE(handleAsBool);
+
+        REQUIRE_NOTHROW(handle.get());
+
+        REQUIRE(handle.get());
+
+        REQUIRE(GetRawHandleState(handle.get()) == HandleState::Opened);
+    }
+
+    SECTION("move")
     {
         vector<RawHandle> rawHandles;
 
         // Check that handle is moved between ScopeHandle instances correctly
         {
-            auto handle = openTestHandle("aaa");
+            auto handle = openTestHandle("move");
             rawHandles.push_back(handle.get());
-            REQUIRE(GetRawHandleName(handle.get()).compare("aaa") == 0);
+            REQUIRE(GetRawHandleName(handle.get()).compare("move") == 0);
             REQUIRE(GetRawHandleState(handle.get()) == HandleState::Opened);
         }
 
@@ -108,5 +138,76 @@ TEST_CASE("ScopedHandle", "ScopedHandle")
         {
             REQUIRE(GetRawHandleState(rawHandle) == HandleState::Closed);
         }
+    }
+
+    SECTION("swap")
+    {
+        auto handle0 = openTestHandle("swap0");
+        auto rawHandle0 = handle0.get();
+
+        auto handle1 = openTestHandle("swap1");
+        auto rawHandle1 = handle1.get();
+
+        REQUIRE(rawHandle0 != rawHandle1);
+
+        handle0.swap(handle1);
+
+        REQUIRE(handle0.get() == rawHandle1);
+        REQUIRE(GetRawHandleState(handle0.get()) == HandleState::Opened);
+
+        REQUIRE(handle1.get() == rawHandle0);
+        REQUIRE(GetRawHandleState(handle1.get()) == HandleState::Opened);
+    }
+
+    SECTION("release")
+    {
+        auto handle = openTestHandle("release");
+        auto rawHandle = handle.get();
+        REQUIRE(GetRawHandleState(handle.get()) == HandleState::Opened);
+
+        TestUniquePtr ptr(handle.release(), CloseRawHandle);
+
+        auto releasedRawHandle = ptr.get();
+        REQUIRE(releasedRawHandle == rawHandle);
+        REQUIRE_THROWS_AS(handle.get(), runtime_error);
+
+        REQUIRE(GetRawHandleState(rawHandle) == HandleState::Opened);
+    }
+
+    SECTION("reset")
+    {
+        SECTION("invalid")
+        {
+            auto handle = openTestHandle("reset-invalid");
+            auto rawHandle = handle.get();
+
+            REQUIRE(GetRawHandleState(rawHandle) == HandleState::Opened);
+
+            handle.reset();
+
+            REQUIRE(GetRawHandleState(rawHandle) == HandleState::Closed);
+        }
+
+        SECTION("other")
+        {
+            TestUniquePtr ptr0(OpenRawHandle("reset-other0"), CloseRawHandle);
+            auto rawHandle0 = ptr0.get();
+
+            auto handle1 = openTestHandle("reset-other1");
+            auto rawHandle1 = handle1.get();
+
+            REQUIRE(GetRawHandleState(rawHandle0) == HandleState::Opened);
+            REQUIRE(GetRawHandleState(rawHandle1) == HandleState::Opened);
+
+            handle1.reset(ptr0.release());
+
+            REQUIRE(GetRawHandleState(rawHandle0) == HandleState::Opened);
+            REQUIRE(GetRawHandleState(rawHandle1) == HandleState::Closed);
+        }
+    }
+
+    for (const auto& pair : s_handleInfos)
+    {
+        REQUIRE(pair.second.state() == HandleState::Closed);
     }
 }
