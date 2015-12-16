@@ -51,7 +51,7 @@ private:
 
 static unordered_map<RawHandle, HandleInfo> s_handleInfos;
 
-static RawHandle OpenRawHandle(const string& name)
+static RawHandle openRawHandle(const string& name)
 {
     auto rawHandle = reinterpret_cast<void*>(s_handleInfos.size() + 100);
     s_handleInfos.emplace(rawHandle, HandleInfo(rawHandle, name));
@@ -61,38 +61,38 @@ static RawHandle OpenRawHandle(const string& name)
     return rawHandle;
 }
 
-static const string& GetRawHandleName(RawHandle rawHandle)
+static const string& getRawHandleName(RawHandle rawHandle)
 {
     auto& handleInfo = s_handleInfos.at(rawHandle);
     assert(handleInfo.state() == HandleState::Opened);
     return handleInfo.name();
 }
 
-static HandleState GetRawHandleState(RawHandle rawHandle)
+static HandleState getRawHandleState(RawHandle rawHandle)
 {
     auto& handleInfo = s_handleInfos.at(rawHandle);
     return handleInfo.state();
 }
 
-/*static*/ void CloseRawHandle(RawHandle rawHandle)
+/*static*/ void closeRawHandle(RawHandle rawHandle)
 {
     auto& handleInfo = s_handleInfos.at(rawHandle);
     assert(handleInfo.state() == HandleState::Opened);
     handleInfo.setState(HandleState::Closed);
 }
 
-using TestHandle = ScopedHandle<RawHandle, nullptr, decltype(CloseRawHandle)*, CloseRawHandle>;
+using TestHandle = ScopedHandle<RawHandle, nullptr, decltype(closeRawHandle)*, closeRawHandle>;
 
 static TestHandle openTestHandle(const string& name)
 {
     // Uses move constructor
-    TestHandle handle(OpenRawHandle(name));
+    TestHandle handle(openRawHandle(name));
     return handle;
 }
 
 TEST_CASE("ScopedHandle", "ScopedHandle")
 {
-    using TestUniquePtr = unique_ptr<remove_pointer<RawHandle>::type, decltype(CloseRawHandle)*>;
+    using TestUniquePtr = unique_ptr<remove_pointer<RawHandle>::type, decltype(closeRawHandle)*>;
 
     SECTION("invalid")
     {
@@ -119,7 +119,7 @@ TEST_CASE("ScopedHandle", "ScopedHandle")
 
         REQUIRE(handle.get());
 
-        REQUIRE(GetRawHandleState(handle.get()) == HandleState::Opened);
+        REQUIRE(getRawHandleState(handle.get()) == HandleState::Opened);
     }
 
     SECTION("move")
@@ -130,13 +130,13 @@ TEST_CASE("ScopedHandle", "ScopedHandle")
         {
             auto handle = openTestHandle("move");
             rawHandles.push_back(handle.get());
-            REQUIRE(GetRawHandleName(handle.get()).compare("move") == 0);
-            REQUIRE(GetRawHandleState(handle.get()) == HandleState::Opened);
+            REQUIRE(getRawHandleName(handle.get()).compare("move") == 0);
+            REQUIRE(getRawHandleState(handle.get()) == HandleState::Opened);
         }
 
         for (auto rawHandle : rawHandles)
         {
-            REQUIRE(GetRawHandleState(rawHandle) == HandleState::Closed);
+            REQUIRE(getRawHandleState(rawHandle) == HandleState::Closed);
         }
     }
 
@@ -153,25 +153,25 @@ TEST_CASE("ScopedHandle", "ScopedHandle")
         handle0.swap(handle1);
 
         REQUIRE(handle0.get() == rawHandle1);
-        REQUIRE(GetRawHandleState(handle0.get()) == HandleState::Opened);
+        REQUIRE(getRawHandleState(handle0.get()) == HandleState::Opened);
 
         REQUIRE(handle1.get() == rawHandle0);
-        REQUIRE(GetRawHandleState(handle1.get()) == HandleState::Opened);
+        REQUIRE(getRawHandleState(handle1.get()) == HandleState::Opened);
     }
 
     SECTION("release")
     {
         auto handle = openTestHandle("release");
         auto rawHandle = handle.get();
-        REQUIRE(GetRawHandleState(handle.get()) == HandleState::Opened);
+        REQUIRE(getRawHandleState(handle.get()) == HandleState::Opened);
 
-        TestUniquePtr ptr(handle.release(), CloseRawHandle);
+        TestUniquePtr ptr(handle.release(), closeRawHandle);
 
         auto releasedRawHandle = ptr.get();
         REQUIRE(releasedRawHandle == rawHandle);
         REQUIRE_THROWS_AS(handle.get(), runtime_error);
 
-        REQUIRE(GetRawHandleState(rawHandle) == HandleState::Opened);
+        REQUIRE(getRawHandleState(rawHandle) == HandleState::Opened);
     }
 
     SECTION("reset")
@@ -181,28 +181,28 @@ TEST_CASE("ScopedHandle", "ScopedHandle")
             auto handle = openTestHandle("reset-invalid");
             auto rawHandle = handle.get();
 
-            REQUIRE(GetRawHandleState(rawHandle) == HandleState::Opened);
+            REQUIRE(getRawHandleState(rawHandle) == HandleState::Opened);
 
             handle.reset();
 
-            REQUIRE(GetRawHandleState(rawHandle) == HandleState::Closed);
+            REQUIRE(getRawHandleState(rawHandle) == HandleState::Closed);
         }
 
         SECTION("other")
         {
-            TestUniquePtr ptr0(OpenRawHandle("reset-other0"), CloseRawHandle);
+            TestUniquePtr ptr0(openRawHandle("reset-other0"), closeRawHandle);
             auto rawHandle0 = ptr0.get();
 
             auto handle1 = openTestHandle("reset-other1");
             auto rawHandle1 = handle1.get();
 
-            REQUIRE(GetRawHandleState(rawHandle0) == HandleState::Opened);
-            REQUIRE(GetRawHandleState(rawHandle1) == HandleState::Opened);
+            REQUIRE(getRawHandleState(rawHandle0) == HandleState::Opened);
+            REQUIRE(getRawHandleState(rawHandle1) == HandleState::Opened);
 
             handle1.reset(ptr0.release());
 
-            REQUIRE(GetRawHandleState(rawHandle0) == HandleState::Opened);
-            REQUIRE(GetRawHandleState(rawHandle1) == HandleState::Closed);
+            REQUIRE(getRawHandleState(rawHandle0) == HandleState::Opened);
+            REQUIRE(getRawHandleState(rawHandle1) == HandleState::Closed);
         }
     }
 
